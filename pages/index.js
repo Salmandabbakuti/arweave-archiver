@@ -41,12 +41,17 @@ export default function Home() {
     setLoading(true);
     try {
       // get html text from entered url
-      const response = await fetch(inputUrl);
+      const response = await fetch('/api/getContent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: inputUrl }),
+      });
+
+      // check if response is ok
+      if (!response.ok) return setLogMessage(`Error while fetching content from website: ${response.statusText}`);
       const html = await response.text();
-
-      // replace assets filepaths with url
-      // TODO
-
 
       // bundlr instance
       const bundlr = new WebBundlr("https://testnet1.bundlr.network", "matic", provider);
@@ -83,7 +88,7 @@ export default function Home() {
         </h1>
 
         <p className={styles.description}>
-          Archive your website on Arweave. That last at least 200 years or as long as the network exists
+          Archive any webpage on Arweave. That last at least 200 years or as long as the network exists
         </p>
         {/* input box with submit button */}
         <div className={styles.archiveContainer}>
