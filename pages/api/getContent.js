@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
     // check for src, href, and url
 
-    console.log("htmlTags", htmlTags);
+    console.log("htmlTags", htmlTagsArr);
     res.status(200).send(htmlContent);
   } catch (err) {
     console.log('Error while fetching content from website:', err);
