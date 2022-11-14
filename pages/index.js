@@ -1,8 +1,72 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import { useState } from 'react';
+import Head from 'next/head';
+import Image from 'next/image';
+import { Web3Provider } from '@ethersproject/providers';
+import { WebBundlr } from '@bundlr-network/client';
+import styles from '../styles/Home.module.css';
+
+const isValidUrl = (url) => /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_+.~#?&//=]*)/g.test(url);
 
 export default function Home() {
+  const [inputUrl, setInputUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [logMessage, setLogMessage] = useState("");
+  const [archiveUrl, setArchiveUrl] = useState("");
+  const [provider, setProvider] = useState(null);
+
+  const handleConnect = async () => {
+    if (window?.ethereum) {
+      const accounts = await window.ethereum.request({
+        method: 'eth_requestAccounts',
+      });
+      console.log("Using account: ", accounts[0]);
+      const provider = new Web3Provider(window.ethereum);
+      const { chainId } = await provider.getNetwork();
+      console.log('chainId:', chainId);
+      setProvider(provider);
+      setLogMessage("Wallet connected");
+    } else {
+      console.log("Please install MetaMask!");
+      setLogMessage("Please install MetaMask!");
+    }
+  };
+
+  const handleArchiveSubmit = async () => {
+    if (!provider) return setLogMessage("Please connect your wallet first!");
+    if (!inputUrl || /^\s*$/.test(inputUrl)) return setLogMessage("Please enter URL");
+    // check if url is valid and if it is, archive 
+    if (!isValidUrl(inputUrl)) return setLogMessage("Please enter a valid URL");
+    setLoading(true);
+    try {
+      // get html text from entered url
+      const response = await fetch(inputUrl);
+      const html = await response.text();
+
+      // replace assets filepaths with url
+      // TODO
+
+
+      // bundlr instance
+      const bundlr = new WebBundlr("https://testnet1.bundlr.network", "matic", provider);
+      await bundlr.ready();
+
+      // archive html
+      const tx = await bundlr.uploader.uploadData(html, { tags: [{ name: "Content-Type", value: "text/html" }] });
+      console.log('upload tx->:', tx);
+
+      // get archive url
+      const archiveUrl = `https://arweave.net/${tx.id}`; // archiveUrl to access file;
+      console.log('archiveUrl->:', archiveUrl);
+      setArchiveUrl(archiveUrl);
+      setLoading(false);
+      setInputUrl("");
+    } catch (err) {
+      console.log('Error while archiving:', err);
+      setLogMessage(`Error while archiving: ${err.message}`);
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <Head>
@@ -13,59 +77,29 @@ export default function Home() {
 
       <main className={styles.main}>
         <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
+          Welcome to <span>Arweave Archiver</span>
         </h1>
 
         <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
+          Archive your website on Arweave. That last at least 200 years or as long as the network exists
         </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h2>Documentation &rarr;</h2>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h2>Learn &rarr;</h2>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className={styles.card}
-          >
-            <h2>Examples &rarr;</h2>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.card}
-          >
-            <h2>Deploy &rarr;</h2>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
+        {/* input box with submit button */}
+        <div className={styles.archiveContainer}>
+          <input className={styles.input} type="text" placeholder="Enter your website URL" onChange={(e) => setInputUrl(e.target.value)} />
+          <button className={styles.button} onClick={provider ? handleArchiveSubmit : handleConnect}>{provider ? "Archive" : "Connect Wallet"}</button>
         </div>
+        {loading && <p>Loading...</p>}
+        {archiveUrl && <p>Archive URL: <a href={archiveUrl} rel="noreferrer" target="_blank">{archiveUrl}</a></p>}
+        <p>
+          {logMessage}
+        </p>
       </main>
 
       <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <span className={styles.logo}>
-            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-          </span>
+        <a href="https://github.com/Salmandabbakuti" target="_blank" rel="noopener noreferrer">
+          © 2022 Salman Dabbakuti. Built with Arweave & Bundlr
         </a>
       </footer>
     </div>
-  )
+  );
 }
